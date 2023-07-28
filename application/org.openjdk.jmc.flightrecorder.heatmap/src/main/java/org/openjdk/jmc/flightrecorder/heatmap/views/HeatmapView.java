@@ -38,11 +38,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.MessageFormat;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import org.eclipse.jface.viewers.ISelection;
@@ -70,6 +72,7 @@ import org.openjdk.jmc.ui.common.util.AdapterUtil;
 import org.openjdk.jmc.ui.misc.DisplayToolkit;
 
 public class HeatmapView extends ViewPart implements ISelectionListener {
+	private final static Logger LOGGER = Logger.getLogger(HeatmapView.class.getName());
 	private static final String HTML_PAGE;
 	static {
 		String jsD3 = "jslibs/d3.v7.min.js";
@@ -97,16 +100,22 @@ public class HeatmapView extends ViewPart implements ISelectionListener {
 
 		@Override
 		public void run() {
-			view.modelState = ModelState.STARTED;
-			if (isInvalid) {
-				return;
-			}
-			String eventsJson = IItemCollectionJsonSerializer.toJsonString(items);
-			if (isInvalid) {
-				return;
-			} else {
-				view.modelState = ModelState.FINISHED;
-				DisplayToolkit.inDisplayThread().execute(() -> view.setModel(items, eventsJson));
+			final var start = System.currentTimeMillis();
+			try {
+				view.modelState = ModelState.STARTED;
+				if (isInvalid) {
+					return;
+				}
+				String eventsJson = IItemCollectionJsonSerializer.toJsonString(items);
+				if (isInvalid) {
+					return;
+				} else {
+					view.modelState = ModelState.FINISHED;
+					DisplayToolkit.inDisplayThread().execute(() -> view.setModel(items, eventsJson));
+				}
+			} finally {
+				final var duration = Duration.ofMillis(System.currentTimeMillis() - start);
+				LOGGER.info("creating model took " + duration + " isInvalid:" + isInvalid);
 			}
 		}
 	}
