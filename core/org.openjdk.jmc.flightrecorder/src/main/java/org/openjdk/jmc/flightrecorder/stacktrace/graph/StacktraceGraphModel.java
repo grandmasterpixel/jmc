@@ -44,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import org.openjdk.jmc.common.IMCFrame;
@@ -98,6 +99,14 @@ public final class StacktraceGraphModel {
 	 */
 	private final Map<AggregatableFrame, Node> nodes = new HashMap<>(1024);
 
+	public StacktraceGraphModel(FrameSeparator frameSeparator, IItemCollection items, IAttribute<IQuantity> attribute,
+			Set<AggregatableFrame> keptNodes, BooleanSupplier stopFlag) {
+		this.frameSeparator = frameSeparator;
+		this.items = items;
+		this.attribute = attribute;
+		buildModel(keptNodes, stopFlag);
+	}
+
 	/**
 	 * Constructor.
 	 * 
@@ -109,17 +118,16 @@ public final class StacktraceGraphModel {
 	 *            the (optional) attribute to use for calculating the values.
 	 */
 	public StacktraceGraphModel(FrameSeparator frameSeparator, IItemCollection items, IAttribute<IQuantity> attribute) {
-		this.frameSeparator = frameSeparator;
-		this.items = items;
-		this.attribute = attribute;
-		buildModel(Collections.emptySet());
+		this(frameSeparator, items, attribute, Collections.emptySet(), () -> false);
 	}
 
-	StacktraceGraphModel(StacktraceGraphModel model, Set<AggregatableFrame> keptNodes) {
-		this.frameSeparator = model.frameSeparator;
-		this.items = model.items;
-		this.attribute = model.attribute;
-		buildModel(keptNodes);
+	public StacktraceGraphModel(FrameSeparator frameSeparator, IItemCollection items, IAttribute<IQuantity> attribute,
+			BooleanSupplier stopFlag) {
+		this(frameSeparator, items, attribute, Collections.emptySet(), stopFlag);
+	}
+
+	StacktraceGraphModel(StacktraceGraphModel model, Set<AggregatableFrame> keptNodes, BooleanSupplier stopFlag) {
+		this(model.frameSeparator, model.items, model.attribute, keptNodes, stopFlag);
 	}
 
 	public Collection<Edge> getEdges() {
@@ -267,13 +275,21 @@ public final class StacktraceGraphModel {
 				nodes.size(), edges.size(), nodes.toString(), edges.toString());
 	}
 
-	private void buildModel(Set<AggregatableFrame> keptNodes) {
+	private void buildModel(Set<AggregatableFrame> keptNodes, BooleanSupplier stopFlag) {
 		for (IItemIterable iterable : items) {
+			if (stopFlag.getAsBoolean()) {
+				return;
+			}
 			IMemberAccessor<IMCStackTrace, IItem> stacktraceAccessor = getAccessor(iterable, EVENT_STACKTRACE);
 			if (stacktraceAccessor == null) {
 				continue;
 			}
-			iterable.forEach((item) -> addItem(item, stacktraceAccessor, getAccessor(iterable, attribute), keptNodes));
+			for (final var item : iterable) {
+				if (stopFlag.getAsBoolean()) {
+					return;
+				}
+				addItem(item, stacktraceAccessor, getAccessor(iterable, attribute), keptNodes);
+			}
 		}
 	}
 

@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -59,11 +60,11 @@ import org.openjdk.jmc.common.item.ItemToolkit;
 public class IItemCollectionJsonSerializer extends JsonWriter {
 	private final static Logger LOGGER = Logger.getLogger("org.openjdk.jmc.flightrecorder.json");
 
-	public static String toJsonString(IItemCollection items) {
+	public static String toJsonString(IItemCollection items, BooleanSupplier stopFlag) {
 		StringWriter sw = new StringWriter();
 		IItemCollectionJsonSerializer marshaller = new IItemCollectionJsonSerializer(sw);
 		try {
-			marshaller.writeRecording(items);
+			marshaller.writeRecording(items, stopFlag);
 		} catch (IOException e) {
 			LOGGER.log(Level.SEVERE, "Failed to serialize recording to JSON", e);
 		}
@@ -85,13 +86,19 @@ public class IItemCollectionJsonSerializer extends JsonWriter {
 		super(w);
 	}
 
-	private void writeRecording(IItemCollection recording) throws IOException {
+	private void writeRecording(IItemCollection recording, BooleanSupplier stopFlag) throws IOException {
 		writeObjectBegin();
 		nextField(true, "events");
 		writeArrayBegin();
 		int count = 0;
 		for (IItemIterable events : recording) {
+			if (stopFlag.getAsBoolean()) {
+				return;
+			}
 			for (IItem event : events) {
+				if (stopFlag.getAsBoolean()) {
+					return;
+				}
 				nextElement(count == 0);
 				writeEvent(event);
 				count++;

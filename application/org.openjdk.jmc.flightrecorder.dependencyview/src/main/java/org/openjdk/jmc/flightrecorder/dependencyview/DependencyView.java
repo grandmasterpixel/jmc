@@ -120,23 +120,31 @@ public class DependencyView extends ViewPart implements ISelectionListener {
 		@Override
 		public void run() {
 			final var start = System.currentTimeMillis();
+			Exception exception = null;
+			LOGGER.info("starting to create model");
 			try {
 				view.modelState = ModelState.STARTED;
 				if (isInvalid) {
 					return;
 				}
-				String eventsJson = IItemCollectionJsonSerializer.toJsonString(items);
+				String eventsJson = IItemCollectionJsonSerializer.toJsonString(items, () -> isInvalid);
 				if (isInvalid) {
 					return;
 				} else {
 					view.modelState = ModelState.FINISHED;
 					DisplayToolkit.inDisplayThread().execute(() -> view.setModel(items, eventsJson, packageDepth));
 				}
+			} catch (Exception e) {
+				exception = e;
+				throw e;
 			} finally {
 				final var duration = Duration.ofMillis(System.currentTimeMillis() - start);
-				LOGGER.info("creating model took " + duration + " isInvalid:" + isInvalid);
+				var level = Level.INFO;
+				if (exception != null) {
+					level = Level.SEVERE;
+				}
+				LOGGER.log(level, "creating model took " + duration + " isInvalid:" + isInvalid, exception);
 			}
-
 		}
 	}
 
@@ -175,7 +183,7 @@ public class DependencyView extends ViewPart implements ISelectionListener {
 			if (this.isChecked()) {
 				diagramType = type;
 				if (currentItems != null) {
-					String eventsJson = IItemCollectionJsonSerializer.toJsonString(currentItems);
+					String eventsJson = IItemCollectionJsonSerializer.toJsonString(currentItems, () -> false);
 					browser.execute(String.format("updateGraph(`%s`, %d, `%s`);", eventsJson, packageDepth,
 							diagramType.name()));
 				}

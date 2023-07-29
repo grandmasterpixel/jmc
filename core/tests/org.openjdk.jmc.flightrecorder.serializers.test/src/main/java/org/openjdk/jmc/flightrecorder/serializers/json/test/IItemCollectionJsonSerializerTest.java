@@ -33,6 +33,8 @@
  */
 package org.openjdk.jmc.flightrecorder.serializers.json.test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -46,8 +48,6 @@ import org.openjdk.jmc.flightrecorder.serializers.json.IItemCollectionJsonSerial
 import org.openjdk.jmc.flightrecorder.test.util.RecordingToolkit;
 import org.openjdk.jmc.flightrecorder.test.util.StacktraceTestToolkit;
 import org.openjdk.jmc.test.io.IOResourceSet;
-
-import static org.junit.Assert.assertEquals;
 
 public class IItemCollectionJsonSerializerTest {
 
@@ -64,7 +64,7 @@ public class IItemCollectionJsonSerializerTest {
 	public void testSerializeKnownRecording() throws IOException {
 		String expected = readResource("/iitemcollection.json");
 
-		String actual = IItemCollectionJsonSerializer.toJsonString(testRecording);
+		String actual = IItemCollectionJsonSerializer.toJsonString(testRecording, () -> false);
 
 		assertEquals(expected.replaceAll("\\r\\n", "\n"), actual.replaceAll("\\r\\n", "\n"));
 	}

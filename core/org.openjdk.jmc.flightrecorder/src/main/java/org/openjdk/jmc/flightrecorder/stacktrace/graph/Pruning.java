@@ -40,19 +40,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 import org.openjdk.jmc.flightrecorder.stacktrace.graph.Node.NodeWrapper;
 
 // implementation based on https://github.com/google/pprof/blob/83db2b799d1f74c40857232cb5eb4c60379fe6c2/internal/report/report.go#L124
 public class Pruning {
-	public static StacktraceGraphModel prune(StacktraceGraphModel model, int maxNodeCount, boolean trimLowFrequency) {
+	public static StacktraceGraphModel prune(
+		StacktraceGraphModel model, int maxNodeCount, boolean trimLowFrequency, BooleanSupplier stopFlag) {
 		// first phase: cutoff
 		long totalValue = model.getNodes().stream().mapToLong(node -> node.count).sum();
 		if (trimLowFrequency) {
 			double nodeFraction = 0.005;
 			long nodeCutoff = Math.round(totalValue * nodeFraction);
 			if (nodeCutoff > 0) {
-				model = discardLowFrequencyNodes(model, nodeCutoff);
+				model = discardLowFrequencyNodes(model, nodeCutoff, stopFlag);
 			}
 		}
 		// second phase: entropy
@@ -74,10 +76,11 @@ public class Pruning {
 			trimLowFrequencyEdges(sortedNodes, edgeCutoff);
 		}
 		// selectTopNodes
-		return selectTopNode(model, sortedNodes, maxNodeCount);
+		return selectTopNode(model, sortedNodes, maxNodeCount, stopFlag);
 	}
 
-	private static StacktraceGraphModel discardLowFrequencyNodes(StacktraceGraphModel model, long nodeCutoff) {
+	private static StacktraceGraphModel discardLowFrequencyNodes(
+		StacktraceGraphModel model, long nodeCutoff, BooleanSupplier stopFlag) {
 		Set<AggregatableFrame> cutNodes = new HashSet<>(model.getNodes().size());
 		for (Node node : model.getNodes()) {
 			if (node.cumulativeWeight < nodeCutoff) {
@@ -85,11 +88,11 @@ public class Pruning {
 			}
 			cutNodes.add(node.getFrame());
 		}
-		return new StacktraceGraphModel(model, cutNodes);
+		return new StacktraceGraphModel(model, cutNodes, stopFlag);
 	}
 
 	private static StacktraceGraphModel selectTopNode(
-		StacktraceGraphModel model, Collection<Node> sortedNodes, int maxCount) {
+		StacktraceGraphModel model, Collection<Node> sortedNodes, int maxCount, BooleanSupplier stopFlag) {
 		Set<AggregatableFrame> cutNodes = new HashSet<>(model.getNodes().size());
 		int count = 0;
 		for (Node node : sortedNodes) {
@@ -99,7 +102,7 @@ public class Pruning {
 				break;
 			}
 		}
-		return new StacktraceGraphModel(model, cutNodes);
+		return new StacktraceGraphModel(model, cutNodes, stopFlag);
 	}
 
 	private static int trimLowFrequencyEdges(Collection<Node> sortedNode, long edgeCutoff) {

@@ -130,18 +130,20 @@ public class GraphView extends ViewPart implements ISelectionListener {
 		@Override
 		public void run() {
 			final var start = System.currentTimeMillis();
+			Exception exception = null;
+			LOGGER.info("starting to create model");
 			try {
 				view.modelState = ModelState.STARTED;
 				if (isInvalid) {
 					return;
 				}
 				// Add support for selected attribute later...
-				StacktraceGraphModel model = new StacktraceGraphModel(separator, items, null);
+				StacktraceGraphModel model = new StacktraceGraphModel(separator, items, null, () -> isInvalid);
 				if (isInvalid) {
 					return;
 				}
 
-				model = Pruning.prune(model, maxNodesRendered, false);
+				model = Pruning.prune(model, maxNodesRendered, false, () -> isInvalid);
 				int currentNodeCount = model.getNodes().size();
 				String dotString = GraphView.toDot(model, maxNodesRendered);
 				if (isInvalid) {
@@ -153,11 +155,17 @@ public class GraphView extends ViewPart implements ISelectionListener {
 						view.nodeThresholdSelection.setText(String.valueOf(currentNodeCount));
 					});
 				}
+			} catch (Exception e) {
+				exception = e;
+				throw e;
 			} finally {
 				final var duration = Duration.ofMillis(System.currentTimeMillis() - start);
-				LOGGER.info("creating model took " + duration + " isInvalid:" + isInvalid);
+				var level = Level.INFO;
+				if (exception != null) {
+					level = Level.SEVERE;
+				}
+				LOGGER.log(level, "creating model took " + duration + " isInvalid:" + isInvalid, exception);
 			}
-
 		}
 	}
 
