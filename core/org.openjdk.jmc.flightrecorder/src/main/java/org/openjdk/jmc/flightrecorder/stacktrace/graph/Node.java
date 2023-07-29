@@ -34,7 +34,9 @@
 package org.openjdk.jmc.flightrecorder.stacktrace.graph;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A node in the graph of aggregated stack traces.
@@ -43,7 +45,7 @@ public final class Node {
 	/**
 	 * Integer uniquely identifying this node within the graph instance.
 	 */
-	private final Integer nodeId;
+	private final int nodeId;
 
 	/**
 	 * The frame associated with this node.
@@ -51,8 +53,8 @@ public final class Node {
 	private final AggregatableFrame frame;
 
 	static class NodeWrapper {
-		int nodeId;
-		Node node;
+		final int nodeId;
+		final Node node;
 
 		NodeWrapper(int nodeId, Node node) {
 			this.nodeId = nodeId;
@@ -85,6 +87,7 @@ public final class Node {
 
 	private final Map<NodeWrapper, Edge> in = new HashMap<>();
 	private final Map<NodeWrapper, Edge> out = new HashMap<>();
+	private Set<Edge> edges;
 
 	/**
 	 * The number of times being the top frame.
@@ -106,7 +109,7 @@ public final class Node {
 	 */
 	double cumulativeWeight;
 
-	public Node(Integer nodeId, AggregatableFrame frame) {
+	public Node(int nodeId, AggregatableFrame frame) {
 		this.nodeId = nodeId;
 		this.frame = frame;
 		if (frame == null) {
@@ -161,7 +164,7 @@ public final class Node {
 		return frame.equals(other.frame);
 	}
 
-	public Integer getNodeId() {
+	public int getNodeId() {
 		return nodeId;
 	}
 
@@ -178,4 +181,12 @@ public final class Node {
 	Map<NodeWrapper, Edge> getOut() {
 		return out;
 	}
+
+	Set<Edge> getEdges() {
+		if (edges == null) {
+			edges = new HashSet<>(16);
+		}
+		return edges;
+	}
+
 }
