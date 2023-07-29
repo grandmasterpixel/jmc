@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -89,6 +90,11 @@ public final class StacktraceGraphModel {
 	private int nodeCounter;
 
 	/**
+	 * From node id -> Edge
+	 */
+	private final Map<Integer, Set<Edge>> edges = new HashMap<>(1024);
+
+	/**
 	 * Frame -> Node
 	 */
 	private final Map<AggregatableFrame, Node> nodes = new HashMap<>(1024);
@@ -125,7 +131,7 @@ public final class StacktraceGraphModel {
 	}
 
 	public Collection<Edge> getEdges() {
-		return nodes.values().stream().map(Node::getEdges).flatMap((c) -> c.stream()).collect(Collectors.toSet());
+		return edges.values().stream().flatMap((c) -> c.stream()).collect(Collectors.toSet());
 	}
 
 	public Collection<Node> getNodes() {
@@ -264,7 +270,6 @@ public final class StacktraceGraphModel {
 
 	@Override
 	public String toString() {
-		final var edges = getEdges();
 		return String.format(
 				"=== StackTraceModel ===\nNode Count:%d\nEdge Count:%d\nNodes: %s\nEdges: %s\n========================",
 				nodes.size(), edges.size(), nodes.toString(), edges.toString());
@@ -350,14 +355,22 @@ public final class StacktraceGraphModel {
 	private Node getOrCreateNode(AggregatableFrame frame) {
 		Node n = nodes.get(frame);
 		if (n == null) {
-			n = new Node(nodeCounter++, frame);
+			n = new Node(Integer.valueOf(nodeCounter++), frame);
 			nodes.put(frame, n);
 		}
 		return n;
 	}
 
 	private Edge getOrCreateLink(Node fromNode, Node toNode, double value) {
-		Set<Edge> toSet = fromNode.getEdges();
+		if (!edges.containsKey(fromNode.getNodeId())) {
+			Edge edge = new Edge(fromNode, toNode, value);
+			Set<Edge> newEdgeSet = new HashSet<>();
+			newEdgeSet.add(edge);
+			edges.put(fromNode.getNodeId(), newEdgeSet);
+			updateNodeEdges(fromNode, toNode, edge, value);
+			return edge;
+		}
+		Set<Edge> toSet = edges.get(fromNode.getNodeId());
 		// We assume that we have a reasonable amount of edges from a node - so linear
 		// search is ok
 		for (Edge edge : toSet) {
