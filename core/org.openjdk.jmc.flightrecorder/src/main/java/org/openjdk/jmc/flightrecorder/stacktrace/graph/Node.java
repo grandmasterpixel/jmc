@@ -43,7 +43,7 @@ public final class Node {
 	/**
 	 * Integer uniquely identifying this node within the graph instance.
 	 */
-	private final Integer nodeId;
+	private final int nodeId;
 
 	/**
 	 * The frame associated with this node.
@@ -106,7 +106,7 @@ public final class Node {
 	 */
 	double cumulativeWeight;
 
-	public Node(Integer nodeId, AggregatableFrame frame) {
+	public Node(int nodeId, AggregatableFrame frame) {
 		this.nodeId = nodeId;
 		this.frame = frame;
 		if (frame == null) {
@@ -161,7 +161,7 @@ public final class Node {
 		return frame.equals(other.frame);
 	}
 
-	public Integer getNodeId() {
+	public int getNodeId() {
 		return nodeId;
 	}
 
