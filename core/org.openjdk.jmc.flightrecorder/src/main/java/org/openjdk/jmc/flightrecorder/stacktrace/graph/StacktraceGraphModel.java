@@ -37,14 +37,12 @@ import static org.openjdk.jmc.flightrecorder.JfrAttributes.EVENT_STACKTRACE;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
@@ -94,7 +92,7 @@ public final class StacktraceGraphModel {
 	/**
 	 * From node id -> Edge
 	 */
-	private Set<Edge>[] edges = new Set[8];
+	private final Map<Integer, Set<Edge>> edges = new HashMap<>(1024);
 
 	/**
 	 * Frame -> Node
@@ -133,8 +131,7 @@ public final class StacktraceGraphModel {
 	}
 
 	public Collection<Edge> getEdges() {
-		return Arrays.asList(edges).stream().filter(Objects::nonNull).flatMap((c) -> c.stream())
-				.collect(Collectors.toSet());
+		return edges.values().stream().flatMap((c) -> c.stream()).collect(Collectors.toSet());
 	}
 
 	public Collection<Node> getNodes() {
@@ -275,7 +272,7 @@ public final class StacktraceGraphModel {
 	public String toString() {
 		return String.format(
 				"=== StackTraceModel ===\nNode Count:%d\nEdge Count:%d\nNodes: %s\nEdges: %s\n========================",
-				nodes.size(), edges.length, nodes.toString(), Arrays.asList(edges).toString());
+				nodes.size(), edges.size(), nodes.toString(), edges.toString());
 	}
 
 	private void buildModel(Set<AggregatableFrame> keptNodes, BooleanSupplier stopFlag) {
@@ -358,50 +355,33 @@ public final class StacktraceGraphModel {
 	private Node getOrCreateNode(AggregatableFrame frame) {
 		Node n = nodes.get(frame);
 		if (n == null) {
-			n = new Node(nodeCounter++, frame);
+			n = new Node(Integer.valueOf(nodeCounter++), frame);
 			nodes.put(frame, n);
 		}
 		return n;
 	}
 
 	private Edge getOrCreateLink(Node fromNode, Node toNode, double value) {
-		Set<Edge> toSet = getEdges(fromNode);
+		if (!edges.containsKey(fromNode.getNodeId())) {
+			Edge edge = new Edge(fromNode, toNode, value);
+			Set<Edge> newEdgeSet = new HashSet<>();
+			newEdgeSet.add(edge);
+			edges.put(fromNode.getNodeId(), newEdgeSet);
+			updateNodeEdges(fromNode, toNode, edge, value);
+			return edge;
+		}
+		Set<Edge> toSet = edges.get(fromNode.getNodeId());
 		// We assume that we have a reasonable amount of edges from a node - so linear
 		// search is ok
-		final var mut = new Object() {
-			Edge edge = null;
-		};
-		final var split = toSet.spliterator();
-		var edgesRemaining = true;
-		do {
-			edgesRemaining = split.tryAdvance(edge -> {
-				if (edge.getTo().equals(toNode)) {
-					mut.edge = edge;
-				}
-			});
-		} while (mut.edge == null && edgesRemaining);
-		if (mut.edge != null) {
-			return mut.edge;
+		for (Edge edge : toSet) {
+			if (edge.getTo().equals(toNode)) {
+				return edge;
+			}
 		}
-
 		Edge edge = new Edge(fromNode, toNode, value);
 		toSet.add(edge);
 		updateNodeEdges(fromNode, toNode, edge, value);
 		return edge;
-	}
-
-	private Set<Edge> getEdges(Node node) {
-		final var index = node.getNodeId();
-		if (index >= edges.length) {
-			int newLength = edges.length * 2;
-			edges = Arrays.copyOf(edges, newLength);
-		}
-		var edgesSet = edges[index];
-		if (edgesSet == null) {
-			edgesSet = new HashSet<>();
-			edges[index] = edgesSet;
-		}
-		return edgesSet;
 	}
 
 	private void updateNodeEdges(Node fromNode, Node toNode, Edge edge, double value) {
