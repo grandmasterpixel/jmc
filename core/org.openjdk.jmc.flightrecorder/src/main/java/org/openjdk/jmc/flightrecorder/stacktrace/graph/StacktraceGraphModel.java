@@ -326,9 +326,9 @@ public final class StacktraceGraphModel {
 			n.weight += value;
 
 			// Next go through all frames from the thread root, and up the cumulative counts
+			AggregatableFrame currentFrame = new AggregatableFrame(frameSeparator, frames.get(frames.size() - 1));
 			for (int i = frames.size() - 1; i > 0; i--) {
 				// Process two frames sliding window, from and to
-				AggregatableFrame currentFrame = new AggregatableFrame(frameSeparator, frames.get(i));
 				AggregatableFrame nextFrame = new AggregatableFrame(frameSeparator, frames.get(i - 1));
 
 				if (keepFrame(keptNodes, currentFrame)) {
@@ -344,6 +344,7 @@ public final class StacktraceGraphModel {
 						totalEdgeCount++;
 					}
 				}
+				currentFrame = nextFrame;
 			}
 		}
 	}
