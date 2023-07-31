@@ -154,7 +154,7 @@ public class WebsocketServer {
 		if (items == null) {
 			return null;
 		}
-		return IItemCollectionJsonSerializer.toJsonString(items);
+		return IItemCollectionJsonSerializer.toJsonString(items, () -> false);
 	}
 
 	private static String toGraphModelDotString(IItemCollection items) {
