@@ -283,7 +283,6 @@ class StructTypes {
 		public Object hidden;
 		// Never use this field directly, make sure to always use a method to get the converted value
 		public Object name;
-		private Object hashName;
 		private boolean convertedNames;
 		private String typeName;
 
@@ -318,13 +317,6 @@ class StructTypes {
 			return (String) name;
 		}
 
-		private String getHashName() {
-			if (hashName == null) {
-				hashName = name;
-			}
-			return (String) hashName;
-		}
-
 		@Override
 		public Boolean isHidden() {
 			return (Boolean) hidden;
@@ -333,7 +325,6 @@ class StructTypes {
 		private void convertNames() {
 			if (!convertedNames) {
 				if (name != null) {
-					hashName = name;
 					name = MethodToolkit.refTypeToBinaryJLS((String) name);
 				}
 				if (getPackageName() != null && getPackageName().length() > 0) {
@@ -347,7 +338,7 @@ class StructTypes {
 
 		@Override
 		public int hashCode() {
-			return Objects.hashCode(getHashName());
+			return Objects.hashCode(getFullName());
 		}
 
 		@Override
@@ -357,7 +348,7 @@ class StructTypes {
 			 * classes are the same.
 			 */
 			return obj instanceof JfrJavaClass
-					&& Objects.equals(this.getHashName(), ((JfrJavaClass) obj).getHashName());
+					&& Objects.equals(this.getFullName(), ((JfrJavaClass) obj).getFullName());
 		}
 
 		@Override
