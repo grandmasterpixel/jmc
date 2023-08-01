@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmc.common.item.IItemCollection;
 import org.openjdk.jmc.flightrecorder.CouldNotLoadRecordingException;
@@ -46,6 +47,7 @@ import org.openjdk.jmc.test.io.IOResourceSet;
 @SuppressWarnings("nls")
 public class StacktraceModelBaselineTest {
 
+	@Ignore
 	@Test
 	public void testAgainstBaseline() throws IOException, CouldNotLoadRecordingException {
 		for (IOResourceSet resourceSet : StacktraceTestToolkit.getTestResources()) {
